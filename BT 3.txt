@@ -1,73 +1,42 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.2 <0.9.0;
 
-contract BankContract {
+// Write a smart contract on a test network, for Bank account of a customer for
+// following operations: Deposit money | Withdraw Money | Show balance
+contract demo {
+    mapping(address => uint256) public user_account;
+    mapping(address => bool) public user_exist;
 
-    struct ClientAccount {
-        int client_id;
-        address client_address;
-        uint client_balance_in_ether;
+    function create_account() public payable returns (string memory) {
+        require(user_exist[msg.sender] == false, "Account Already created!");
+        user_account[msg.sender] = msg.value;
+        user_exist[msg.sender] = true;
+        return "Account created";
     }
 
-    ClientAccount[] clients;
-
-    int clientCounter;
-    address payable manager;
-    mapping(address => uint) public interestDate;
-
-    modifier onlyManager() {
-        require(msg.sender == manager, "Only manager can call this!");
-        _;
+    function deposit(uint256 amount) public payable returns (string memory) {
+        require(user_exist[msg.sender] == true, "Account not created!");
+        require(amount > 0, "Amount should be greater than 0");
+        user_account[msg.sender] += amount;
+        return "Amount deposisted sucessfully";
     }
 
-    modifier onlyClients() {
-        bool isClient = false;
-        for (uint i = 0; i < clients.length; i++) {
-            if (clients[i].client_address == msg.sender) {
-                isClient = true;
-                break;
-            }
-        }
-        require(isClient, "Only clients can call this!");
-        _;
+    function withdraw(uint256 amount) public payable returns (string memory) {
+        require(user_exist[msg.sender] == true, "Account not created!");
+        require(amount > 0, "Amount should be greater than 0");
+        require(
+            user_account[msg.sender] >= amount,
+            "Amount is greater than money deposisted"
+        );
+        user_account[msg.sender] -= amount;
+        return "Amount withdrawn sucessfully";
     }
 
-    constructor() {
-        clientCounter = 0;
+    function account_balance() public view returns (uint256) {
+        return user_account[msg.sender];
     }
 
-    receive() external payable {}
-
-    function setManager(address managerAddress) public {
-        manager = payable(managerAddress);
-    }
-
-    function joinAsClient() public payable {
-        interestDate[msg.sender] = block.timestamp;
-        clients.push(ClientAccount(clientCounter++, msg.sender, address(msg.sender).balance));
-    }
-
-    function deposit() public payable onlyClients {
-        // No need to use payable here, just transfer the value
-        payable(address(this)).transfer(msg.value);
-    }
-
-    function withdraw(uint amount) public onlyClients {
-        require(amount <= address(this).balance, "Insufficient contract balance");
-        payable(msg.sender).transfer(amount);
-    }
-
-    function sendInterest() public onlyManager {
-        for (uint i = 0; i < clients.length; i++) {
-            address initialAddress = clients[i].client_address;
-            uint lastInterestDate = interestDate[initialAddress];
-            require(block.timestamp >= lastInterestDate + 10 seconds, "Less than 10 seconds have passed");
-            payable(initialAddress).transfer(1 ether);
-            interestDate[initialAddress] = block.timestamp;
-        }
-    }
-
-    function getContractBalance() public view returns (uint) {
-        return address(this).balance;
+    function account_exists() public view returns (bool) {
+        return user_exist[msg.sender];
     }
 }
